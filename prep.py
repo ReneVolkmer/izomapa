@@ -136,7 +136,26 @@ def dem_sampler():
     return sample
 
 
-dem = dem_sampler()
+def dmr_sampler(fallback):
+    """DMR 5G (ČÚZK, laser, 2 m) z nastroje/dmr.py, kde chybí, Terrarium"""
+    if os.environ.get('IZO_DMR', '1') == '0' or not os.path.exists('build/dmr5g.npy'): return fallback, None
+    a = np.load('build/dmr5g.npy'); m = json.load(open('build/dmr5g.json'))
+    print('terén DMR 5G', a.shape, 'krok', m['r'], 'm')
+
+    def sample(px, py):
+        lon, lat = to_lonlat(px, py)                                  # mřížka DMR je ve stupních (nastroje/dmr.py)
+        fx = (lon - m['lon0']) / m['dd'] - 0.5; fy = (m['lat1'] - lat) / m['dd'] - 0.5
+        x0 = np.clip(np.floor(fx).astype(int), 0, m['w'] - 2); y0 = np.clip(np.floor(fy).astype(int), 0, m['h'] - 2)
+        tx = np.clip(fx - x0, 0, 1); ty = np.clip(fy - y0, 0, 1)
+        z = (a[y0, x0] * (1 - tx) * (1 - ty) + a[y0, x0 + 1] * tx * (1 - ty) + a[y0 + 1, x0] * (1 - tx) * ty + a[y0 + 1, x0 + 1] * tx * ty)
+        bad = ~np.isfinite(z)
+        if bad.any(): z = np.where(bad, fallback(px, py), z)
+        return z
+    return sample, m
+
+
+dem, DMR = dmr_sampler(dem_sampler())
+VEX = float(geo.MESTO.get('prevyseni', 1.0))   # převýšení terénu (1 = skutečnost); budovy a stromy se nemění
 STEP = 5.0
 N = int(2 * HALF / STEP) + 1
 # mřížka výšek i s pásem sousedů (MS kroků); body leží na společné světové mřížce, takže se sousedé shodují
@@ -147,7 +166,7 @@ gx, gy = np.meshgrid(np.linspace(-RE, RE, NE), np.linspace(RE, -RE, NE))
 HX = dem(gx, gy)
 from numpy.lib.stride_tricks import sliding_window_view
 HX = sliding_window_view(np.pad(HX, 1, mode='edge'), (3, 3)).mean(axis=(2, 3))
-HMIN = HREF; HX = HX - HMIN              # společná výška pro všechny čtverce
+HMIN = HREF; HX = (HX - HMIN) * VEX       # společná výška pro všechny čtverce
 H = HX[MS:MS + N, MS:MS + N]
 
 
@@ -295,13 +314,20 @@ for _, r in inf.iterrows():
 for q in UP['paved']: fill(Polygon([to_local(lo, la) for la, lo in q]), C['paved'], block=True)
 
 wat = load('water')
+def open_stream(r):
+    """řeka nebo potok na povrchu; zatrubněné úseky (tunnel=culvert, level -1) vedou pod domy a cestami, nekreslí se"""
+    if r['class'] not in ('river', 'stream'): return False
+    tags = dict(r['source_tags']) if r['source_tags'] is not None else {}
+    lv = r['level']
+    return tags.get('tunnel', 'no') == 'no' and not (lv is not None and lv == lv and lv < 0)
+for _, r in wat.iterrows():                       # potoky dřív než rybníky, ať osa potoka nevede přes hladinu
+    if r.geom.geom_type not in ('Polygon', 'MultiPolygon') and open_stream(r):
+        line(r.geom, C['stream'], 6 if r['class'] == 'river' else 2.5, block=True)
 for _, r in wat.iterrows():
     g = r.geom
     if g.geom_type in ('Polygon', 'MultiPolygon'):
         if r['class'] == 'swimming_pool': fill(g, C['pool'], outline=C['pool_edge'], block=True)
         else: fill(g, C['water'], block=True)
-    elif r['class'] == 'river':          # jen řeky; potoky v datech často vedou pod domy (zatrubněné) a ve skutečnosti nejsou vidět
-        line(g, C['stream'], 6, block=True)
 
 seg = load('segment')
 TUNNEL_MIN = 60.0     # kratší „tunel“ je podjezd pod silnicí nebo tratí: kreslí se jako cesta, nad ní vede most
@@ -1539,10 +1565,35 @@ noise2 = np.random.default_rng(2).random((TW, TW), dtype=np.float32)
 NATURAL = [C[k] for k in ('grass', 'garden', 'park', 'meadow', 'forest', 'scrub', 'cemetery', 'wetland', 'farmland',
                           'wheat', 'wheat2', 'rape', 'rape2', 'maize', 'maize2', 'soil', 'soil2')]
 nat = np.isin(cls_a, NATURAL)
+
+
+def stinovani(sila):
+    """stínování svahů do textury (jako na turistických mapách): násobek barvy, rovina = 1. Ze stejného terénu
+    a slunce jako render (SUN v render.html), počítá se na celé světové mřížce po 2 m, takže na švech navazuje"""
+    r = 2.0; n = int(round(2 * HALF / r))
+    c = -HALF + (np.arange(-1, n + 1) + 0.5) * r
+    gx_, gy_ = np.meshgrid(c, -c)
+    z = dem(gx_, gy_) * VEX
+    k = np.exp(-0.5 * (np.arange(-6, 7) / 2.0) ** 2); k /= k.sum()     # Gauss σ 4 m: bez stop orby a šumu laseru
+    z = np.pad(z, 6, mode='edge')
+    z = np.apply_along_axis(lambda v: np.convolve(v, k, 'valid'), 1, z)
+    z = np.apply_along_axis(lambda v: np.convolve(v, k, 'valid'), 0, z)
+    zx = (z[1:-1, 2:] - z[1:-1, :-2]) / (2 * r); zy = (z[:-2, 1:-1] - z[2:, 1:-1]) / (2 * r)   # řádky jdou od severu
+    L = np.array([0.38, -0.68, 0.62]); L /= np.linalg.norm(L)                               # (východ, sever, nahoru)
+    d = (-zx * L[0] - zy * L[1] + L[2]) / np.sqrt(zx ** 2 + zy ** 2 + 1)
+    f = np.clip(1 + sila * (d / L[2] - 1), 0.62, 1.22).astype(np.float32)
+    print('stínování svahů', round(float(f.min()), 2), '–', round(float(f.max()), 2))
+    return np.asarray(Image.fromarray(f, 'F').resize((TW, TW), Image.BILINEAR))[..., None]
+
+
+SH_SILA = float(geo.MESTO.get('stinovani', 0.45))      # 0 = vypnuto
+SHADE = stinovani(SH_SILA) if SH_SILA > 0 else None
+WET = np.isin(cls_a, [C['water'], C['pool'], C['stream'], C['pool_edge']])[..., None]
 for season, pal in SEASON_PAL.items():
     lut = np.zeros((256, 3), np.uint8)
     for k, v in C.items(): lut[v] = pal[k]
     img = lut[cls_a].astype(np.int16)
+    if SHADE is not None: img = np.where(WET, img, np.clip(img * SHADE, 0, 255)).astype(np.int16)
     # pixel-art zrnitost trávy / sněhu
     dark = nat & (noise > 0.93); light = nat & (noise < 0.05)
     img[dark] -= 14 if season != 'winter' else 10
@@ -1610,7 +1661,7 @@ for _, r in wat.iterrows():
     if g.geom_type in ('Polygon', 'MultiPolygon'):
         for p in polys(g):
             if p.area > 15: water_out['ponds'].append(zline(p.exterior) + ([] if r['class'] != 'swimming_pool' else []))
-    elif r['class'] == 'river':
+    elif open_stream(r):
         water_out['streams'] += [zline(l) for l in lines(g)]
 piste_out = []                                 # pro lyžaře v prohlížeči: vždy shora dolů
 for l in PISTE:

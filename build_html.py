@@ -31,6 +31,10 @@ fill = {
     'TITULEK': E(M['titulek']), 'POPIS': E(M['popis']), 'MESTO': E(M['nazev']), 'H1_A': E(M['h1'][0]), 'H1_B': E(M['h1'][1]),
     'PODTITUL': E(M['podtitul']),
     'HLASENI': 'true' if M.get('hlaseni') else 'false',
+    # terén: DMR 5G z nastroje/dmr.py (ČÚZK), jinak Terrarium
+    'TEREN': 'z digitálního modelu reliéfu DMR 5G (ČÚZK)' if os.path.exists('build/dmr5g.npy') else 'z modelu Terrarium',
+    'TEREN_ZDROJ': '' if os.path.exists('build/dmr5g.npy') else 'terén Terrarium (AWS Open Data), ',
+    'TEREN_CUZK': 'terén DMR 5G, ' if os.path.exists('build/dmr5g.npy') else '',
     'MHD_ZDROJ': f', jízdní řády MHD © <a href="{E(mhd["zdroj_url"])}" target="_blank" rel="noopener">{E(mhd["zdroj"])}</a>'
                  if mhd.get('gtfs') and mhd.get('zdroj') else '',
 }
