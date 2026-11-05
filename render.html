@@ -419,6 +419,67 @@ function roofDeco(b, X, eave, rc) {
       // druhý trojúhelník čtyřúhelníku má jiné rohy -> doplnit atributy ručně
       W.a.splice(W.a.length - 12, 12, 0, lo, len, st, len, eRel, len, st, 0, eRel, len, st);
     }
+    // chalupa (dominanta "lm": "chalupa", rámec z chalupa() v prep.py): sedlová střecha nad užší částí, nad přístavkem
+    // delší a plošší (nesouměrný štít), dřevem obložené štíty, zvýšená část s pultovou střechou od hřebene,
+    // komíny s nerezovou stříškou, střešní okna
+    if (b.chal) {
+      const [ox, oy, ang, sg, L, wM, wE, sE, rh, gcc, box, koms, okna, dcc] = b.chal;
+      const F = frameAt(ox, oy, 0, ang), f = (s, t, z) => F(s, sg * t, z);
+      const dc = dcc ? C255(dcc) : rc, gc = C255(gcc), S0 = [0, 0, 0, 0], NWIN = [0, -100, 1, 0], OV = 0.4;
+      const tr = wM / 2, top = eave + rh;
+      const zM = (t) => top - Math.abs(t - tr) * rh / tr;                 // hlavní střecha
+      const zE = (t) => t <= tr ? zM(t) : top - (t - tr) * rh / (wE - tr); // nad přístavkem (s < sE) plošší
+      // trojúhelník s normálou od bodu ref (uvnitř stavby)
+      const tri = (B, a, b_, c, col, aw, ref) => {
+        const n = new THREE.Vector3(...b_).sub(new THREE.Vector3(...a)).cross(new THREE.Vector3(...c).sub(new THREE.Vector3(...a)));
+        if (n.dot(new THREE.Vector3(...a).sub(new THREE.Vector3(...ref))) < 0) pushTri(B, a, c, b_, col, aw); else pushTri(B, a, b_, c, col, aw);
+      };
+      const quad = (B, a, b_, c, d, col, aw, ref) => { tri(B, a, b_, c, col, aw, ref); tri(B, a, c, d, col, aw, ref); };
+      const box3 = (s0, s1, t0, t1, z0, z1, col, aw, colTop) =>      // kvádr v rámci F (pravotočivý), t převedené přes sg
+        pushBox(X, F, s0, s1, Math.min(sg * t0, sg * t1), Math.max(sg * t0, sg * t1), z0, z1, col, aw, colTop);
+      const mid = f(L / 2, tr, eave);
+      // střecha: jihovýchodní strana celá, druhá strana zvlášť nad hlavní částí a nad přístavkem
+      quad(R, f(-OV, -OV, zM(-OV)), f(L + OV, -OV, zM(-OV)), f(L + OV, tr, top), f(-OV, tr, top), rc, S0, mid);
+      quad(R, f(sE, tr, top), f(L + OV, tr, top), f(L + OV, wM + OV, zM(wM + OV)), f(sE, wM + OV, zM(wM + OV)), rc, S0, mid);
+      quad(R, f(-OV, tr, top), f(sE, tr, top), f(sE, wE + OV, zE(wE + OV)), f(-OV, wE + OV, zE(wE + OV)), rc, S0, mid);
+      // svislá plocha mezi plošší a hlavní střechou (s = sE) a štítek přístavku pod plošší střechou
+      tri(W, f(sE, tr, top), f(sE, wM + OV, zE(wM + OV)), f(sE, wM + OV, zM(wM + OV)), gc, NWIN, f(sE - 1, tr, eave));
+      tri(W, f(sE, wM, eave), f(sE, wE, eave), f(sE, wM, zE(wM)), gc, NWIN, f(sE - 1, (wM + wE) / 2, eave));
+      // štíty obložené prkny: severovýchodní (hlavní část) a jihozápadní (celá šířka, nesouměrný)
+      tri(W, f(L, 0, eave), f(L, wM, eave), f(L, tr, top), gc, NWIN, mid);
+      tri(W, f(0, 0, eave), f(0, wE, eave), f(0, tr, top), gc, NWIN, mid);
+      const WIN = [0.16, 0.14, 0.13], AW = [0, 1, 1, 0];
+      for (const [s, sgn] of [[0, -1], [L, 1]]) for (const t of [tr - 1.2, tr + 1.2]) {   // okna ve štítech
+        const s0 = sgn < 0 ? s - 0.06 : s, s1 = sgn < 0 ? s : s + 0.06;
+        box3(s0, s1, t - 0.4, t + 0.4, eave + 1.0, eave + 2.0, WIN, AW);
+      }
+      // vikýře: čelní stěna ustoupená od okapu, pultová stříška (falcovaný plech) navazuje kousek pod hřebenem
+      const zS = (s, t) => (s < sE ? zE(t) : zM(t));                 // povrch střechy na straně vikýřů
+      for (const [bA, bB] of (box.length && typeof box[0] === 'number' ? [box] : box)) {
+        const sm = (bA + bB) / 2, wz = sm < sE ? wE : wM;            // kam až sahá střecha pod vikýřem
+        const tF = tr + 0.62 * (wz - tr), zB = zS(sm, tF), zF = zB + 2.3, tB = tr + 0.25, zR = zS(sm, tB);
+        const ref = f(sm, (tB + tF) / 2, eave);
+        quad(W, f(bA, tF, zB), f(bB, tF, zB), f(bB, tF, zF), f(bA, tF, zF), gc, NWIN, ref);
+        for (const s of [bA, bB]) quad(W, f(s, tB, zR), f(s, tF, zB), f(s, tF, zF), f(s, tB, zR + 0.02), gc, NWIN, ref);
+        quad(R, f(bA - 0.3, tB - 0.05, zR + 0.05), f(bB + 0.3, tB - 0.05, zR + 0.05), f(bB + 0.3, tF + 0.45, zF + 0.05), f(bA - 0.3, tF + 0.45, zF + 0.05), dc, S0, ref);
+        const n = 2, gap = (bB - bA) / (n + 1);                        // dvě okna
+        for (let i = 1; i <= n; i++) {
+          const sc = bA + i * gap;
+          box3(sc - 0.45, sc + 0.45, tF, tF + 0.06, zB + 0.45, zF - 0.4, WIN, AW);
+        }
+      }
+      // střešní okna na straně do dvora (t < hřeben)
+      for (const s of okna) {
+        const t0 = tr * 0.3, t1 = tr * 0.62, z = (t) => zM(t) + 0.05;
+        quad(X, f(s - 0.45, t0, z(t0)), f(s + 0.45, t0, z(t0)), f(s + 0.45, t1, z(t1)), f(s - 0.45, t1, z(t1)), [0.60, 0.68, 0.76], [0, 1, 1, 0], mid);
+      }
+      // komíny na hřebeni: cihla, nerezová stříška
+      for (const [s, dh] of koms) {
+        box3(s - 0.35, s + 0.35, tr - 0.35, tr + 0.35, top - 1.5, top + dh, [0.62, 0.36, 0.26], AW, [0.30, 0.24, 0.22]);
+        box3(s - 0.45, s + 0.45, tr - 0.3, tr + 0.3, top + dh + 0.15, top + dh + 0.4, [0.80, 0.82, 0.85], AW);
+      }
+      continue;
+    }
     if (b.r === 'flat' || !b.parts.length || rot) {
       const pts = ring.map(([x, y]) => new THREE.Vector2(x, y));
       for (const [i, j, k] of THREE.ShapeUtils.triangulateShape(pts, [])) {

@@ -1,0 +1,59 @@
+[
+ {
+  "name": "Kostel sv. Mikuláše",
+  "lat": 49.57691667, "lon": 14.39622222,
+  "text": "Podle fotek z Wikimedia Commons (kategorie Saint Nicholas church (Nechvalice), 2006–2019) a z webu obce: bílé omítané zdi, sedlová střecha z červených tašek, hranolová věž na západě s hodinami a červenou jehlancovou špicí se zlatou makovicí, nižší presbytář na východě se sanktusníkem s cibulkou. Výška lodi a věže podle laseru ČÚZK (medián 10 m, max 25 m).",
+  "spec": {
+   "wc": [238, 235, 226], "rc": [178, 84, 54], "r": "gabled", "h": 7.5, "rh": 6,
+   "towers": [
+    {"at": "w", "w": 6.5, "h": 18, "top": "spire", "to": 29, "tc": [190, 52, 42], "clock": 1},
+    {"at": "e", "w": 1.4, "h": 10.5, "top": "helm", "to": 14, "tc": [78, 72, 66]}
+   ]
+  }
+ },
+ {
+  "name": "Bývalá fara (Nechvalice č. p. 22)",
+  "lat": 49.57607, "lon": 14.39563,
+  "text": "Podle fotky z webu obce (obecnechvalice.cz/fotografie): dvoupatrová okrová budova s bílými šambránami a nárožími, valbová střecha z červených tašek s vikýřem. Poloha podle adresy RÚIAN, výška podle laseru ČÚZK (medián 8,9 m, max 11,3 m).",
+  "spec": {"wc": [224, 186, 106], "rc": [178, 84, 54], "r": "hipped", "h": 7, "rh": 4.3}
+ },
+ {
+  "name": "ZŠ a MŠ Nechvalice (č. p. 25)",
+  "lat": 49.57588, "lon": 14.39524,
+  "text": "Podle fotky z webu obce: dvoupatrová světle modrobílá budova s bílými šambránami, valbová střecha z červených tašek se střešními okny. Adresa Nechvalice 25 podle zprávy ČŠI, poloha podle RÚIAN, výška podle laseru ČÚZK (medián 11,9 m, max 14,2 m).",
+  "spec": {"wc": [214, 224, 236], "rc": [176, 80, 52], "r": "hipped", "h": 8.5, "rh": 5.5}
+ },
+ {
+  "name": "Hasičská zbrojnice Nechvalice (č. p. 68)",
+  "lat": 49.57791, "lon": 14.39717,
+  "text": "Podle fotky z webu obce: nová dvoupatrová zbrojnice, šedobílá fasáda s červeným pásem, dvoje červená vrata, tmavě šedá sedlová střecha s nízkým sklonem. Č. p. 68 podle uživatele; adresní bod RÚIAN leží na dvoře, budova s tmavou střechou severně od něj podle ortofota ČÚZK. Obrys v OSM je menší než na ortofotu a laser (5–6 m) je nejspíš starší než stavba, výška proto podle fotky.",
+  "spec": {"wc": [212, 212, 210], "rc": [74, 76, 80], "r": "gabled", "h": 6.5, "rh": 2.5}
+ },
+ {
+  "name": "Kulturní dům Ředice (Ředičky 2)",
+  "lat": 49.57380, "lon": 14.43931,
+  "text": "Adresu Ředičky 2 určil uživatel, budova podle adresního bodu RÚIAN a ortofota ČÚZK (samostatný dům s červenou sedlovou střechou na svahu). Barvy podle fotek kulturních domů z webu obce: žlutá fasáda, červená střecha. Výška podle laseru ČÚZK (medián 6,6 m, max 9,5 m).",
+  "spec": {"wc": [232, 218, 132], "rc": [184, 78, 48], "r": "gabled", "h": 5, "rh": 4.5}
+ },
+ {
+  "name": "Kulturní dům Vratkov (Vratkov 9)",
+  "lat": 49.55445, "lon": 14.45932,
+  "text": "Adresu Vratkov 9 určil uživatel, budova (v datech veřejná budova) 2 m od adresního bodu RÚIAN. Barvy podle fotek kulturních domů z webu obce: žlutá fasáda, červená sedlová střecha. Výška podle laseru ČÚZK (medián 5,5 m, max 7 m).",
+  "spec": {"wc": [236, 220, 120], "rc": [184, 78, 48], "r": "gabled", "h": 4.2, "rh": 2.8}
+ },
+ {
+  "name": "Nechvalice č. p. 7",
+  "lat": 49.57674, "lon": 14.39684,
+  "text": "Podle fotek uživatele (říjen 2026): přízemí s bílou vápennou omítkou a modrými okny, štít a podkroví obložené tmavě hnědými svislými prkny, celá sedlová střecha z rovné černé tašky; na straně do silnice dva vikýře obložené prkny (dvě okna, pultová stříška z černého falcovaného plechu), na straně do dvora dvě střešní okna a cihlový komín. Nad přístavkem u jihozápadního štítu střecha delší a plošší. Vlastní model lm: chalupa. Laser ČÚZK (3,7–5,1 m) je nejspíš starší než přestavba, výška proto podle fotek.",
+  "spec": {"lm": "chalupa", "wc": [236, 232, 222], "rc": [34, 34, 37], "dc": [52, 54, 58], "gc": [96, 64, 42], "r": "gabled", "h": 3.2, "rh": 4.2,
+   "face": [49.57692, 14.39622],
+   "box": [[6.2, 10.2], [11.2, 14.4]], "kom": [[7.5, 1.1]], "okna": [6.7, 7.9]}
+ },
+ {
+  "name": "Kaplička na Březí",
+  "lat": 49.56078, "lon": 14.44660,
+  "text": "Naproti Březí č. p. 8 (určil uživatel), budova 11 m² v datech. Podle fotky z webu obce (2011): bílá omítnutá kaplička, valbová střecha z červených tašek, uprostřed hřebene malá zvonička s měděnou jehlancovou stříškou a křížem.",
+  "spec": {"wc": [240, 238, 232], "rc": [190, 88, 56], "r": "hipped", "h": 3.4, "rh": 1.8,
+   "towers": [{"at": "c", "w": 1.0, "h": 5.6, "top": "spire", "to": 7.4, "tc": [198, 112, 70]}]}
+ }
+]

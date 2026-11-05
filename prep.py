@@ -790,6 +790,31 @@ def dom_pos(p, at, sp, d, w, side=0.0, t=0.5):
     return x + ax[0] * side, y + ax[1] * side, ang
 
 
+def chalupa(p, sp):
+    """vlastní model 'chalupa' (dominanta s "lm": "chalupa"): rámec podél delší osy půdorysu, s = 0 na širším
+    konci (štít nad přístavkem), t = 0 na straně bez přístavku a kladné ke straně 'face' (zvýšená část střechy).
+    -> [ox, oy, úhel osy, znaménko t, délka, šířka hlavní části, šířka s přístavkem, kde přístavek končí (s),
+        výška střechy, barva štítů, [s od, s do] zvýšené části, [[s, výška nad hřebenem]] komínů, [s] střešních oken]"""
+    o = p.minimum_rotated_rectangle; cs = np.array(o.exterior.coords)[:4]
+    k = max(range(4), key=lambda i: np.linalg.norm(cs[(i + 1) % 4] - cs[i]))
+    u = (cs[(k + 1) % 4] - cs[k]) / np.linalg.norm(cs[(k + 1) % 4] - cs[k])
+    rot = lambda v: np.array([-v[1], v[0]])
+    pts = np.array(p.exterior.coords)[:-1]; c = pts.mean(0)
+    fx, fy = sp.get('face_xy', [c[0], c[1] + 50])
+    sg = 1.0 if (np.array([fx, fy]) - c) @ rot(u) >= 0 else -1.0     # t = sg * (bod . rot(u)) roste k 'face'
+    T = (pts @ rot(u)) * sg; S = pts @ u
+    mid = (S.min() + S.max()) / 2
+    if T[S > mid].max() > T[S <= mid].max(): u = -u; sg = -sg            # s má růst od širšího konce
+    S = pts @ u; s0 = S.min(); t0 = T.min(); L = float(S.max() - s0)
+    wM = float(T[S - s0 > L / 2].max() - t0)                             # šířka užší (hlavní) části
+    wE = float(T.max() - t0)                                             # šířka i s přístavkem
+    sE = float(S[T - t0 > wM + 0.8].max() - s0)                          # přístavek končí v s = sE
+    ox, oy = u * s0 + rot(u) * (t0 * sg)
+    return [round(float(ox), 2), round(float(oy), 2), round(math.atan2(u[1], u[0]), 4), sg, round(L, 2), round(wM, 2), round(wE, 2),
+            round(sE, 2), float(sp.get('rh', 4.2)), list(sp.get('gc', sp.get('wc', [200, 200, 200]))), sp.get('box', []),
+            sp.get('kom', []), sp.get('okna', []), sp.get('dc')]
+
+
 def unhole(p):
     """budova s dvorem -> kusy bez děr (renderer kreslí jen vnější obrys); řez vede dvorem napříč delší osou"""
     if not p.is_valid: p = p.buffer(0)
@@ -1101,6 +1126,7 @@ for _, r in bld.iterrows():
         if lm: b['lm'] = lm
         if dsp:
             b['dn'] = dom['name']
+            if dsp.get('lm') == 'chalupa' and pi == tw_piece: b['chal'] = chalupa(p, dsp)
             if dsp.get('canopy'): b['cn'] = dsp['canopy']
             for blk in dsp.get('blocks', []):
                 o = p.minimum_rotated_rectangle; cs = list(o.exterior.coords)[:3]
