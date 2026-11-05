@@ -10,7 +10,7 @@ Prohlížeč z toho podle skutečného času dopočítá, kde je každé vozidlo
 """
 import csv, io, json, os, subprocess, sys, time, zipfile
 import shapely
-from geo import MESTO, to_local
+from geo import MESTO, to_local, extent, chunk_of, CHUNKS
 
 URL = (MESTO.get('mhd') or {}).get('gtfs')
 if not URL: sys.exit('mesto.json nemá mhd.gtfs – MHD se vynechá')
@@ -19,16 +19,29 @@ if '--stahnout' in sys.argv or not os.path.exists(Z) or time.time() - os.path.ge
     subprocess.run(['curl', '-sL', '-m', '120', '-o', Z + '.tmp', URL], check=True)
     zipfile.ZipFile(Z + '.tmp').testzip(); os.replace(Z + '.tmp', Z)
 zf = zipfile.ZipFile(Z)
-T = lambda n: list(csv.DictReader(io.TextIOWrapper(zf.open(n + '.txt'), encoding='utf-8-sig')))
+I = lambda n: csv.DictReader(io.TextIOWrapper(zf.open(n + '.txt'), encoding='utf-8-sig'))   # po řádcích (velké krajské feedy)
+T = lambda n: list(I(n))
 sec = lambda t: (lambda h, m, s: h * 3600 + m * 60 + s)(*map(int, t.split(':')))
 
+# jen spoje se zastávkou na území mapy (krajský feed jako PID má miliony řádků, do webu patří jen kousek)
+X0, Y0, X1, Y1 = extent(0)
+def in_map(s):
+    if not s['stop_lat']: return False
+    x, y = (float(v) for v in to_local(float(s['stop_lon']), float(s['stop_lat'])))
+    return X0 <= x <= X1 and Y0 <= y <= Y1 and chunk_of(x, y) in CHUNKS
+STOPS = T('stops')
+inside = {s['stop_id'] for s in STOPS if in_map(s)}
+keep = {r['trip_id'] for r in I('stop_times') if r['stop_id'] in inside}
+trips = [t for t in I('trips') if t['trip_id'] in keep]
+
 routes, RI = [], {}
+used_routes = {t['route_id'] for t in trips}
 for r in T('routes'):
+    if r['route_id'] not in used_routes: continue
     RI[r['route_id']] = len(routes); routes.append([r['route_short_name'], int(r['route_type'] or 3)])
-trips = T('trips')
 used = {t['shape_id'] for t in trips}
 pts = {}
-for r in T('shapes'):
+for r in I('shapes'):
     if r['shape_id'] in used: pts.setdefault(r['shape_id'], []).append((int(r['shape_pt_sequence']), float(r['shape_pt_lon']), float(r['shape_pt_lat']), float(r['shape_dist_traveled'] or 0)))
 shapes, SI, SLEN = [], {}, {}
 for k, v in pts.items():
@@ -37,20 +50,23 @@ for k, v in pts.items():
     l = shapely.LineString(list(zip(x, y)))
     SI[k] = len(shapes); SLEN[k] = (l.length, v[-1][3] or 1.0)
     shapes.append([[round(a, 1), round(b, 1)] for a, b in shapely.simplify(l, 1.0).coords])
-services = {}
+services, SV = {}, {t['service_id'] for t in trips}
 for c in T('calendar'):
+    if c['service_id'] not in SV: continue
     services[c['service_id']] = [[int(c[d]) for d in ('monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')],
                                  int(c['start_date']), int(c['end_date']), [], []]
 for c in T('calendar_dates'):
+    if c['service_id'] not in SV: continue
     s = services.setdefault(c['service_id'], [[0] * 7, 0, 0, [], []])
     s[3 if c['exception_type'] == '1' else 4].append(int(c['date']))
-SN = {r['stop_id']: r['stop_name'] for r in T('stops')}
+SN = {r['stop_id']: r['stop_name'] for r in STOPS}
 names, NI = [], {}
 def nid(n):
     if n not in NI: NI[n] = len(names); names.append(n)
     return NI[n]
 st = {}
-for r in T('stop_times'):
+for r in I('stop_times'):
+    if r['trip_id'] not in keep: continue
     st.setdefault(r['trip_id'], []).append((int(r['stop_sequence']), sec(r['arrival_time']), sec(r['departure_time']), float(r['shape_dist_traveled'] or 0), SN.get(r['stop_id'], '')))
 out = []
 for t in trips:
