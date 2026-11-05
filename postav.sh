@@ -5,7 +5,7 @@
 # Čas: stahování ~2–5 min na čtverec, render ~1–2 min na čtverec a variantu (Mac s Apple Silicon).
 set -e
 cd "$(dirname "$0")"
-. .venv/bin/activate
+if [ -f .venv/bin/activate ]; then . .venv/bin/activate; else . .venv/Scripts/activate; fi   # Windows: .venv/Scripts
 CH=$(python -c "import geo; print(' '.join(f'{i},{j}' for i, j in sorted(geo.CHUNKS)))")
 dir() { if [ "$1" = "0,0" ]; then echo data; else echo data_c$(echo $1 | tr ',' '_'); fi; }
 
